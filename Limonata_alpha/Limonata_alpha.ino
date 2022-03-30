@@ -161,9 +161,52 @@ void dispatchCommand(void){
     setValve(val);
     sendBinaryResponse(valveQ);
   }
-  else if (cmd == ""
-  else if (cmd == "R1"){
-    sendFloatResponse(
+  else if (cmd == "agitatorQ"){
+    setValve(val);
+    sendFloatResponse(agitatorQ);
+  }
+  else if (cmd == "agitatorQB"){
+    setValve(val);
+    sendBinaryResponse(agitatorQ);
+  }
+  else if (cmd == "pumpR"){
+    sendFloatResponse(pumpQ);
+  }
+  else if (cmd == "valveR"){
+    sendFloatResponse(valveQ);
+  }
+  else if (cmd == "agitatorR"){
+  sendFloatResponse(agitatorQ);
+  }
+  else if (cmd == "SCAN") {
+    sendFloatResponse(readTemperature(pinT));
+    sendFloatResponse(readFlowRate(pinFlow));
+    sendFloatResponse(pumpQ);
+    sendFloatResponse(valveQ);
+    sendFloatResponse(agitatorQ);
+    // TO DO: Add the temperature control aspect later
+  }
+  else if (cmd == "T"){
+    sendFloatResponse(readTemperature(pinT);
+  }
+  else if (cmd == "TB"){
+    sendBinaryResponse(readTemperature(pinT);
+  }
+  else if (cmd == "VER"){
+    sendResponse("Limonata Firmware " + vers + " " boardType);
+  }
+  else if (cmd == "X"){
+    setPump(0);
+    setValve(100); // TO DO: Try to have it fail open
+    setAgitator(0);
+    // TO DO: setTankHeater(0);
+    sendResponse("Stop");
+  }
+  else if (cmd.length() > 0){
+    setPump(0);
+    setValve(100);
+    setAgitator(0);
+    sendResponse(cmd);
   }
 }
 
