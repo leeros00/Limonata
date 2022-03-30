@@ -1,1 +1,3 @@
-import numpy as np
+from .limonata import diagnose
+
+diagnose()
