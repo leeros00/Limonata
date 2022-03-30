@@ -209,14 +209,31 @@ void dispatchCommand(void){
     sendResponse(cmd);
   }
 }
-
+											 
+void checkAlarm(void){
+	if ((readTemperature(pinT > limT) {
+		alarmStatus = 1;
+	}
+	else {
+	alarmStatus = 0;
+	}
+}
+			 
 void setPump(float qval){
   pumpQ = max(0., min(qval, 100.);
-  analogWrite(pin
+  analogWrite(pinPumpQ, (pumpQ*pumpP)/100);
 }
-setControlValve(255);
-setAgitator(0);
+void setControlValve(float qval){
+  pumpQ = max(0., min(qval, 100.);
+  analogWrite(pinValveQ, (valveQ*valveP)/100);
+}
+void setAgitator(float qval){
+  pumpQ = max(0., min(qval, 100.);
+  analogWrite(pinAgitatorQ, (agitatorQ*agitatorP)/100);
+}
+							
 
+										
 void setup() {
   analogReference(EXTERNAL);
   while (!Serial) {
@@ -225,6 +242,7 @@ void setup() {
   
   Serial.begin(baud);
   Serial.flush();
+	
   setPump(0);
   setControlValve(0);
   setAgitator(0);
@@ -239,5 +257,5 @@ void loop() {
   parseCommand();
   dispatchCommand();
   checkAlarm();
-  updateStatus();
+  //updateStatus();
 }
