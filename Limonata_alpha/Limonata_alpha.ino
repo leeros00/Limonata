@@ -38,19 +38,25 @@ const int pinValveQ    = 5;
 const int pinAgitatorQ = 6;
 const int pinLED       = 9;
 
+const int limT = 50;
+
 // global variables
 char Buffer[64];
 int buffer_index = 0;
 String cmd; 
 float val;
 int ledStatus;
-
-
 long ledTimeout  = 0;
 float LED        = 100;
+
 float pumpP      = 0;
 float valveP     = 0; // Because it is a fail close valve, it may be best to initialize at 255 at some point? 
 float agitatorP  = 0;
+
+float pumpQ      = 0;
+float valveQ     = 0;
+float agitatorQ  = 0;
+
 int alarmStatus;
 boolean newData  = false;
 int n            = 10;
@@ -75,6 +81,16 @@ void echoCommand() {
     Serial.write(nl);
     Serial.flush();
   }
+}
+
+// return average  of n reads of thermister temperature in °C
+inline float readTemperature(int pin) {
+  float degC = 0.0;
+  for (int i = 0; i < n; i++) {
+    degC += analogRead(pin) * 0.322265625 - 50.0;    // use for 3.3v AREF
+    //degC += analogRead(pin) * 0.170898438 - 50.0;  // use for 1.75v AREF
+  }
+  return degC / float(n);
 }
 
 inline float readFlowRate(int pin) {
@@ -124,7 +140,7 @@ void sendBinaryResponse(float val) {
 void dispatchCommand(void){
   if (cmd == "A"){
     setPump(0);
-    setControlValve(255);
+    setValve(255);
     setAgitator(0);
     sendResponse("Start");
   }
@@ -187,13 +203,13 @@ void dispatchCommand(void){
     // TO DO: Add the temperature control aspect later
   }
   else if (cmd == "T"){
-    sendFloatResponse(readTemperature(pinT);
+    sendFloatResponse(readTemperature(pinT));
   }
   else if (cmd == "TB"){
-    sendBinaryResponse(readTemperature(pinT);
+    sendBinaryResponse(readTemperature(pinT));
   }
-  else if (cmd == "VER"){
-    sendResponse("Limonata Firmware " + vers + " " boardType);
+  else if (cmd == "VER") {
+    sendResponse("Limonata Firmware " + vers + " " + boardType);
   }
   else if (cmd == "X"){
     setPump(0);
@@ -209,31 +225,31 @@ void dispatchCommand(void){
     sendResponse(cmd);
   }
 }
-											 
+                       
 void checkAlarm(void){
-	if ((readTemperature(pinT > limT) {
-		alarmStatus = 1;
-	}
-	else {
-	alarmStatus = 0;
-	}
+  if (readTemperature(pinT > limT)) {
+    alarmStatus = 1;
+  }
+  else {
+  alarmStatus = 0;
+  }
 }
-			 
+       
 void setPump(float qval){
-  pumpQ = max(0., min(qval, 100.);
+  pumpQ = max(0., min(qval, 100.));
   analogWrite(pinPumpQ, (pumpQ*pumpP)/100);
 }
-void setControlValve(float qval){
-  pumpQ = max(0., min(qval, 100.);
+void setValve(float qval){
+  valveQ = max(0., min(qval, 100.));
   analogWrite(pinValveQ, (valveQ*valveP)/100);
 }
 void setAgitator(float qval){
-  pumpQ = max(0., min(qval, 100.);
+  agitatorQ = max(0., min(qval, 100.));
   analogWrite(pinAgitatorQ, (agitatorQ*agitatorP)/100);
 }
-							
+              
 
-										
+                    
 void setup() {
   analogReference(EXTERNAL);
   while (!Serial) {
@@ -242,9 +258,9 @@ void setup() {
   
   Serial.begin(baud);
   Serial.flush();
-	
+  
   setPump(0);
-  setControlValve(0);
+  setValve(0);
   setAgitator(0);
   
   ledTimeout = millis() + 1000;
