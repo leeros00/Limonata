@@ -208,6 +208,12 @@ void dispatchCommand(void){
   else if (cmd == "TB"){
     sendBinaryResponse(readTemperature(pinT));
   }
+  else if (cmd == "F"){
+    sendFloatResponse(readFlowRate(pinFlowRate));
+  }
+  else if (cmd == "FB"){
+    sendBinaryResponse(readFlowRate(pinFlowRate));
+  }
   else if (cmd == "VER") {
     sendResponse("Limonata Firmware " + vers + " " + boardType);
   }
