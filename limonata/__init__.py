@@ -4,7 +4,7 @@ from .experiment import Experiment, runexperiment
 from .labtime import clock, labtime, setnow
 from .version import __version__
 
-def setup(connected = True, speedup = 1)
+def setup(connected = True, speedup = 1):
 
   if connected:
     lab = Limonata
