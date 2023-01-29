@@ -117,14 +117,14 @@ void dispatchCommand(void){
     sendFloatResponse(Q);
   }
   else if (cmd == "SCAN"){
-    sendFloatResponse(readFlowRate(pinF));
+    sendFloatResponse(readFlowRate());
     sendFloatResponse(Q);
   }
   else if (cmd == "F"){
-    sendFloatResponse(readFlowRate(pinF));
+    sendFloatResponse(readFlowRate());
   }
   else if (cmd == "FB"){
-    sendBinaryResponse(readFlowRate(pinF));
+    sendBinaryResponse(readFlowRate());
   }
   else if (cmd == "VER"){
     sendResponse("Limonata Firmware version 0.0.0" + boardType);
@@ -155,25 +155,64 @@ void rpm(){
 }
 
 
-int n = 10;
+const int sensorPin = 2; // input pin for the hall effect sensor
+volatile unsigned long flowCount; // variable to store the flow count
+unsigned long flowRate; // variable to store the flow rate
+unsigned long lastTime; // variable to store the last time the interrupt was triggered
 
-int highTime;
-int lowTime;
-float period;
-float freq;
+  // if (millis() - lastTime >= 200) { // check if 1 second has passed
+  //   detachInterrupt(digitalPinToInterrupt(sensorPin)); // detach the interrupt to prevent further counts
+  //   flowRate = (float)flowCount * 100 / 7.5; // calculate the flow rate
+  //   Serial.print("Flow rate: "); // print the flow rate to the serial monitor
+  //   Serial.print(flowRate);
+  //   Serial.println(" L/min");
+  //   flowCount = 0; // reset the flow count
+  //   lastTime = millis(); // update the last time
+  //   attachInterrupt(digitalPinToInterrupt(sensorPin), countPulse, RISING); // reattach the interrupt
+  // }
 
-// TO DO: See if this conversion works for other apparati once we make more. 
-inline float readFlowRate(int pin){
-  float F = 0;
-  for (int i = 0; i < n; i++){
-    highTime = pulseIn(pin, HIGH);
-    lowTime  = pulseIn(pin, LOW);
-    period = lowTime + highTime;
-    freq = -period;
-    F = (freq*4.5)/2312.95;
+void setDefaultFlowRateValue(int timeInterval=200){
+  // The intention of this method is to basically compute the flow rate in the background
+  // TO DO: Make the params variable so we can optimize our predictive ability for water and other fluids
+  // TO DO: Consider optimizing the parameters for sensing/predicting the flow with ML
+  if (millis() - lastTime >= timeInterval){
+    detachInterrupt(digitalPinToInterrupt(sensorPin));
+    // TO DO: Consider finding a way to tune/optimize the weights of the flow sensor
+    flowRate = (float)flowCount*100/7.5 
+    Serial.print("Flow rate: ");
+    Serial.print(flowRate);
+    Serial.println(" L/min");
+    flowCount = 0;
+    lastTime = millis();
+    attachInterrupt(digitalPinToInterrupt(sensorPin), countPulse, RISING);
   }
-  return F/float(n); // L/min is the default
 }
+
+inline float readFlowRate(unsigned long longFlowRate=flowRate){
+  // This method simply returns the most current flowRate value set by
+  // Converting it to a float.
+  // TO DO: Consider using a double, considering the precision.
+  float floatFlowRate = (float)longFlowRate;
+  return floatFlowRate;
+}
+
+
+
+
+
+
+// // TO DO: See if this conversion works for other apparati once we make more. 
+// inline float readFlowRate(int pin){
+//   float F = 0;
+//   for (int i = 0; i < n; i++){
+//     highTime = pulseIn(pin, HIGH);
+//     lowTime  = pulseIn(pin, LOW);
+//     period = lowTime + highTime;
+//     freq = -period;
+//     F = (freq*4.5)/2312.95;
+//   }
+//   return F/float(n); // L/min is the default
+// }
 
 void setup() {
   analogReference(EXTERNAL);
@@ -189,10 +228,16 @@ void setup() {
   //attachInterrupt(0, rpm, RISING);
   
 }
-
+count = 0;
 void loop() {
   readCommand();
   if (DEBUG) echoCommand();
   parseCommand();
+  // TO DO: Consider figuring the optimal place for setDefaultFlowRateValue()
+  setDefaultFlowRateValue();
   dispatchCommand();
+  // TO DO: Figure out how fast this api loops irrespective of command presence...
+  // If it loops irrespective of command, then we can count pulses irrespective of command for the flow meter
+  Serial.println(count);
+  count++;
 }
