@@ -1,0 +1,175 @@
+from __future__ import print_function
+
+import os
+import time
+import random
+import serial
+from serial.tools import list_ports
+
+# from .labtime import labtime
+# from .version import __version__
+
+from typing import Union, Tuple, Any, Callable
+
+
+sp = ' '
+_firmware_url = ''
+_connected = False
+
+mcus = [('USB VID:PID=16D0:0613', 'Arduino Uno'),
+            ('USB VID:PID=1A86:7523', 'NHduino'),
+            ('USB VID:PID=2341:8036', 'Arduino Leonardo'),
+            ('USB VID:PID=2A03', 'Arduino.org device'),
+            ('USB VID:PID', 'unknown device'),
+            ]
+
+
+def clip(val: Union[float, int], 
+         lower: Union[float, int]=0, 
+         upper: Union[float, int]=100) -> Union[float, int]:
+    """Limit value to be between lower and upper limits."""
+    return max(lower, min(val, upper))
+
+
+def command(name: str, argument: str, 
+            lower: Union[float, int]=0, upper: Union[float, int]=100) -> str:
+    """Locates the controller and returns the port and device."""
+    return name + sp + str(clip(val=argument, lower=lower, upper=upper))
+
+
+def find_microcontroller(port: str='') -> Union[Tuple, 
+                                                Tuple[None, None]]:
+    """Locates the microcontroller and returns port and device."""
+    # TODO: Figure out the type hinting for port, mcu
+    comports = [tuple for tuple in list_ports.comports() if port in tuple[0]]
+    for port, desc, hwid in comports:
+        for identifier, mcu in mcus:
+            if hwid.startswith(identifier):
+                return port, mcu
+    print('--- Serial Ports ---')
+    for port, desc, hwid, in list_ports.comports():
+        print(port, desc, hwid)
+    return None, None
+
+
+class AlreadyConnectedError(Exception):
+    pass
+
+
+class Limonata:
+    def __init__(self, port: str='', debug: bool=False) -> None:
+        global _connected
+        self.debug = debug
+        self.baud_rate = 115200
+        #print("Limonata version", __version__)
+        self.port, self.dev_board = find_microcontroller(port=port)
+        if self.port is None:
+            raise RuntimeError('No microcontroller device found.')
+        
+        try:
+            self.connect(baud_rate=self.baud_rate)
+        except AlreadyConnectedError:
+            raise
+        except:
+            try:
+                _connected = False
+                self.baud_rate = 9600
+                self.sp.close()
+                self.connect(baud_rate=self.baud_rate)
+                print('Could not connect at high baud rate, but succeeded at low baud rate.')
+            except:
+                raise RuntimeError('Failed to connect.')
+            
+        self.sp.readline().decode('UTF-8')
+        self.version = self.send_and_receive('VERSION')
+        if self.sp.isOpen():
+            print(self.dev_board, 'connected on port', self.port,
+                  'at', self.baud_rate, 'baud.')
+            print(self.version + '.')
+        # TODO: implement labtime equivalent
+        self._red_heater_P = 250.0
+        # TODO: set other defaults as needed
+        self.sources = [('T_red', self.scan), ('redHeaterQ'),]
+
+    def __enter__(self):
+        # TODO: Not sure what the default type hinting is here.
+        return self
+    
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+        return
+    
+    def connect(self, baud_rate: int) -> None:
+        """Establish a connection to the MCU"""
+        global _connected
+        if _connected:
+            raise AlreadyConnectedError('You already have an open connection.')
+        _connected = True
+
+        self.sp = serial.Serial(port=self.port, baudrate=baud_rate, timeout=2)
+        time.sleep(2)
+        self.red_heater_Q(0) # Fails if not connected
+        self.baud_rate = baud_rate
+
+    def close(self) -> None:
+        """Shut down the Limonata device and close serial connection."""
+        global _connected
+
+        self.red_heater_Q(0)
+        self.send_and_receive('X')
+        self.sp.close()
+        _connected = False
+        print('Limonata disconnected successfully.')
+        return None
+    
+    def send(self, msg: str) -> None:
+        """Send a string message to the MCU firmware."""
+        self.sp.write((msg + '\r\n').encode())
+        if self.debug:
+            print('Sent: "' + msg + '"')
+        self.sp.flush()
+        return None
+    
+    def receive(self) -> str:
+        """Retrieve a string message received from the Limonata Firmware"""
+        msg = self.sp.readline().decode('UTF-8').replace('r\n', '')
+        if self.debug:
+            print('Return: "' + msg + '"')
+        return msg
+    
+    def send_and_receive(self, msg: str, convert: Any=str) -> Any:
+        """Send a string message and return the response."""
+        self.send(msg=msg)
+        return convert(self.receive())
+    
+    def alarm() -> None:
+        pass
+
+    @property
+    def T_red_reactor(self) -> Callable:
+        return self.send_and_receive(msg='T_red_reactor', convert=float)
+    
+    @property
+    def P_red_heater(self) -> Callable:
+        return self._P_red_heater
+
+    @P_red_heater.setter
+    def P_red_heater(self, val: int | float) -> None:
+        self._P_red_heater = self.send_and_receive(command('P_red_heater', val, 0, 255), float)
+
+    def Q_red_heater(self, val: float | int=None) -> Callable:
+        """Get or set Limonata red vessel temperature."""
+        if val is None:
+            msg = 'R_red_heater'
+        else:
+            msg = 'Q_red_heater' + sp + str(clip(val=val))
+        return self.send_and_receive(msg=msg, convert=float)
+    
+    def scan(self) -> Tuple[float]:
+        """Scans for T and Q values"""
+        T_red_reactor = self.T_red_reactor
+        Q_red_heater = self.Q_red_heater
+        return T_red_reactor, Q_red_heater
+
+    U_red_heater = property(fget=Q_red_heater, fset=Q_red_heater, doc="Red Heater value")
+    
