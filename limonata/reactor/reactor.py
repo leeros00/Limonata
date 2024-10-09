@@ -56,7 +56,7 @@ class AlreadyConnectedError(Exception):
     pass
 
 
-class Limonata:
+class Reactor(object):
     def __init__(self, port: str='', debug: bool=False) -> None:
         global _connected
         self.debug = debug

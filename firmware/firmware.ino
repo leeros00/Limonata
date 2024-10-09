@@ -31,7 +31,7 @@ command returns a resulting string.
 #else
   String boardType = "Unknown board";
 #endif
-#include <max6675.h>
+
 // TODO: implement debugging option?
 //const bool DEBUG = false;
 
@@ -131,15 +131,15 @@ void doCommand(void) {
     setRedHeater(0);
     respond("Start");
   }
-  else if (cmd == "redHeaterP") {
+  else if (cmd == "P_red_heater") {
     redHeaterP = max(0, min(255, val));
     respond(String(redHeaterP));
   }
-  else if (cmd == "redHeaterQ") {
+  else if (cmd == "Q_red_heater") {
     setRedHeater(val);
     floatRespond(redHeaterQ);
   }
-  else if (cmd == "redHeaterQB") {
+  else if (cmd == "QB_red_heater") {
     setRedHeater(val);
     binaryRespond(redHeaterQ);
   }
@@ -147,7 +147,7 @@ void doCommand(void) {
     floatRespond(readTemperature(pinRedTempDO, pinRedTempCS, pinRedTempCLK));
     floatRespond(redHeaterQ);
   }
-  else if (cmd == "redT") {
+  else if (cmd == "T_red_reactor") {
     floatRespond(readTemperature(pinRedTempDO, pinRedTempCS, pinRedTempCLK));
   }
   else if (cmd == "VERSION") {
