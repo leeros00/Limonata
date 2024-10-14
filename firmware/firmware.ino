@@ -67,7 +67,7 @@ int nTempSamples = 10; // Number of temperature samples for each temperature mea
 
 
 void readCommand() {
-  while (Serial && (Serial.available() > 0) && (newData = false)) {
+  while (Serial && (Serial.available() > 0) && (newData == false)) {
     int byte = Serial.read();
     if ((byte != '\r') && (byte != nl) && (bufferIndex < 64)) {
       Buffer[bufferIndex] = byte;
@@ -82,9 +82,10 @@ void readCommand() {
 // TODO: Consider adding in an echoCommand() for serial monitor debugging
 
 void setRedHeater(float qVal) {
-  redHeaterQ = max(0.0, min(qVal, 100.0));
-  analogWrite(pinRedHeaterQ, (redHeaterQ*redHeaterP)/100);
+  redHeaterQ = max(0.0, min(qVal, 100.0));  // Clip the value between 0 and 100
+  analogWrite(pinRedHeaterQ, (redHeaterQ * redHeaterP) / 100);  // Set PWM value
 }
+
 
 inline float readTemperature(int pinDO, int pinCS, int pinCLK){
   MAX6675 thermocouple(pinCLK, pinCS, pinDO);
@@ -96,21 +97,32 @@ inline float readTemperature(int pinDO, int pinCS, int pinCLK){
 }
 
 void parseCommand(void) {
-  if (newData) {
-    String read_ = String(Buffer);
+    if (newData) {
+        String read_ = String(Buffer);
 
-    int i = read_.indexOf(sp);
-    cmd = read_.substring(0, i);
-    cmd.trim();
-    cmd.toUpperCase();
-    String data = read_.substring(i+1);
-    data.trim();
-    val = data.toFloat();
-    
-    memset(Buffer, 0, sizeof(Buffer));
-    bufferIndex = 0;
-    newData = false;
-  }
+        // Remove leading/trailing whitespace
+        read_.trim();
+
+        int i = read_.indexOf(sp); // Locate the space between command and value
+        if (i > 0) {  // Command has a space, indicating value
+            cmd = read_.substring(0, i);
+            cmd.trim();
+            cmd.toUpperCase();
+            String data = read_.substring(i + 1);  // Extract value part
+            data.trim();
+            val = data.toFloat();  // Convert value to float
+        } else {  // Command without a value
+            cmd = read_;
+            cmd.trim();
+            cmd.toUpperCase();
+            val = 0;  // Default value when no argument is provided
+        }
+
+        // Clear buffer and reset index after processing command
+        memset(Buffer, 0, sizeof(Buffer));
+        bufferIndex = 0;
+        newData = false;
+    }
 }
 
 void respond(String message) {
@@ -126,22 +138,24 @@ void binaryRespond(float val) {
   Serial.write(b, 4);
 }
 
+
 void doCommand(void) {
   if (cmd == "A") {
     setRedHeater(0);
     respond("Start");
   }
   else if (cmd == "P_red_heater") {
-    redHeaterP = max(0, min(255, val));
+    redHeaterP = max(0, min(255, val));  // Set heater power limit
     respond(String(redHeaterP));
   }
   else if (cmd == "Q_red_heater") {
-    setRedHeater(val);
-    floatRespond(redHeaterQ);
-  }
-  else if (cmd == "QB_red_heater") {
-    setRedHeater(val);
-    binaryRespond(redHeaterQ);
+      // Check if a value was passed
+      if (cmd.length() < bufferIndex) {  // Argument provided
+          setRedHeater(val);  // Set the heater to the specified value
+          floatRespond(redHeaterQ);  // Return the updated heater power
+      } else {  // No argument provided, just return the current value
+          floatRespond(redHeaterQ);  // Return the current heater power
+      }
   }
   else if (cmd == "SCAN") {
     floatRespond(readTemperature(pinRedTempDO, pinRedTempCS, pinRedTempCLK));
@@ -159,10 +173,26 @@ void doCommand(void) {
   }
   else if (cmd.length() > 0) {
     setRedHeater(0);
-    respond(cmd);
+    respond(cmd);  // Echo the command back
   }
   Serial.flush();
   cmd = "";
+}
+
+void echoCommand() {
+  if (newData) {
+    Serial.write("Received Command: ");
+    Serial.write(Buffer, bufferIndex);
+    Serial.write(nl);
+    Serial.flush();
+  }
+}
+
+void debugCommand() {
+  Serial.print("Parsed Command: ");
+  Serial.println(cmd);
+  Serial.print("Value: ");
+  Serial.println(val);
 }
 
 
@@ -177,6 +207,8 @@ void setup() {
 
 void loop() {
   readCommand();
+  //echoCommand();
   parseCommand();
+  //debugCommand();
   doCommand();
 }

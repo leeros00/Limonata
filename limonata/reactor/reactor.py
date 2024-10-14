@@ -12,7 +12,7 @@ from serial.tools import list_ports
 from typing import Union, Tuple, Any, Callable
 
 
-sp = ' '
+sep = ' '
 _firmware_url = ''
 _connected = False
 
@@ -34,7 +34,7 @@ def clip(val: Union[float, int],
 def command(name: str, argument: str, 
             lower: Union[float, int]=0, upper: Union[float, int]=100) -> str:
     """Locates the controller and returns the port and device."""
-    return name + sp + str(clip(val=argument, lower=lower, upper=upper))
+    return name + sep + str(clip(val=argument, lower=lower, upper=upper))
 
 
 def find_microcontroller(port: str='') -> Union[Tuple, 
@@ -87,17 +87,19 @@ class Reactor(object):
                   'at', self.baud_rate, 'baud.')
             print(self.version + '.')
         # TODO: implement labtime equivalent
-        self._red_heater_P = 250.0
+        self._P_red_heater = 250.0
+        self.Q_red_heater(0)
         # TODO: set other defaults as needed
-        self.sources = [('T_red', self.scan), ('redHeaterQ'),]
+        self.sources = [('T_red', self.scan), ('Q_red_heater', None),]
 
-    def __enter__(self):
-        # TODO: Not sure what the default type hinting is here.
+    def __enter__(self) -> 'Reactor':
+        """Enters the context manager."""
         return self
     
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type, exc_value, traceback) -> bool:
+        """Exits the context manager and ends the connection."""
         self.close()
-        return
+        return exc_type is None
     
     def connect(self, baud_rate: int) -> None:
         """Establish a connection to the MCU"""
@@ -108,19 +110,19 @@ class Reactor(object):
 
         self.sp = serial.Serial(port=self.port, baudrate=baud_rate, timeout=2)
         time.sleep(2)
-        self.red_heater_Q(0) # Fails if not connected
+        self.Q_red_heater(0) # Fails if not connected
         self.baud_rate = baud_rate
 
     def close(self) -> None:
         """Shut down the Limonata device and close serial connection."""
         global _connected
 
-        self.red_heater_Q(0)
+        self.Q_red_heater(0)
         self.send_and_receive('X')
         self.sp.close()
         _connected = False
         print('Limonata disconnected successfully.')
-        return None
+        return
     
     def send(self, msg: str) -> None:
         """Send a string message to the MCU firmware."""
@@ -128,11 +130,10 @@ class Reactor(object):
         if self.debug:
             print('Sent: "' + msg + '"')
         self.sp.flush()
-        return None
     
     def receive(self) -> str:
         """Retrieve a string message received from the Limonata Firmware"""
-        msg = self.sp.readline().decode('UTF-8').replace('r\n', '')
+        msg = self.sp.readline().decode('UTF-8').replace('\r\n', '')
         if self.debug:
             print('Return: "' + msg + '"')
         return msg
@@ -140,13 +141,17 @@ class Reactor(object):
     def send_and_receive(self, msg: str, convert: Any=str) -> Any:
         """Send a string message and return the response."""
         self.send(msg=msg)
-        return convert(self.receive())
+        response = self.receive()
+        if not response:
+            raise ValueError("No response received from controller.")
+        return convert(response)
     
     def alarm() -> None:
         pass
 
     @property
-    def T_red_reactor(self) -> Callable:
+    def T_red_reactor(self) -> float:
+        """Returns the interior temperature of the red reactor vessel."""
         return self.send_and_receive(msg='T_red_reactor', convert=float)
     
     @property
@@ -157,12 +162,12 @@ class Reactor(object):
     def P_red_heater(self, val: int | float) -> None:
         self._P_red_heater = self.send_and_receive(command('P_red_heater', val, 0, 255), float)
 
-    def Q_red_heater(self, val: float | int=None) -> Callable:
+    def Q_red_heater(self, val: Union[float, int]=None) -> float:
         """Get or set Limonata red vessel temperature."""
         if val is None:
             msg = 'R_red_heater'
         else:
-            msg = 'Q_red_heater' + sp + str(clip(val=val))
+            msg = 'Q_red_heater' + sep + str(clip(val=val))
         return self.send_and_receive(msg=msg, convert=float)
     
     def scan(self) -> Tuple[float]:

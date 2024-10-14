@@ -4,19 +4,36 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import unittest
-from limonata.reactor.reactor import Reactor
-
 import numpy as np
 import matplotlib.pyplot as plt
+import tclab
 import time
+
+
+# process model
+Kp = 0.9
+taup = 175.0
+thetap = 15.0
+
+# -----------------------------
+# Calculate Kc,tauI,tauD (IMC Aggressive)
+# -----------------------------
+tauc = max(0.1*taup,0.8*thetap)
+Kc = (1/Kp)*(taup+0.5*thetap)/(tauc+0.5*thetap)
+tauI = taup + 0.5*thetap
+tauD = taup*thetap / (2*taup+thetap)
+
+print('Kc: ' + str(Kc))
+print('tauI: ' + str(tauI))
+print('tauD: ' + str(tauD))
 
 def pid(sp,pv,pv_last,ierr,dt):
     # Parameters in terms of PID coefficients
-    KP = 2.0#Kc
-    KI = 5.0#Kc/tauI
-    KD = 1.0#Kc*tauD
+    KP = Kc
+    KI = Kc/tauI
+    KD = Kc*tauD
     # ubias for controller (initial heater)
-    op0 = 0 
+    op0 = 0
     # upper and lower bounds on heater level
     ophi = 100
     oplo = 0
@@ -40,52 +57,72 @@ def pid(sp,pv,pv_last,ierr,dt):
     return [op,P,I,D]
 
 
+
+
+
 class TestLimonataRed(unittest.TestCase):
     def test_pid_temperature_control(self) -> None:
-        reactor = Reactor()
+        #reactor = Reactor()
         try:
-            n = 600*3  # Number of second time points (30 min)
+
+
+
+            #------------------------
+            # PID Controller Function
+            #------------------------
+            # sp = setpoint
+            # pv = current temperature
+            # pv_last = prior temperature
+            # ierr = integral error
+            # dt = time increment between measurements
+            # outputs ---------------
+            # op = output of the PID controller
+            # P = proportional contribution
+            # I = integral contribution
+            # D = derivative contribution
+
+            n = 600  # Number of second time points (10 min)
             tm = np.linspace(0,n-1,n) # Time values
-            
-            T_red_reactor = np.zeros(n)
-            Q_red_heater = np.zeros(n)
-            
-            SP1 = np.ones(n)*29.0
-            SP1[100:] = 32.0
-            Q_red_heater_bias = 0.0
+            lab = tclab.TCLab()
+            T1 = np.zeros(n)
+            Q1 = np.zeros(n)
+            # step setpoint from 23.0 to 60.0 degC
+            SP1 = np.ones(n)*23.0
+            SP1[10:] = 60.0
+            Q1_bias = 0.0
             ierr = 0.0
             for i in range(n):
                 # record measurement
-                T_red_reactor[i] = reactor.T_red_reactor
+                T1[i] = lab.T1
 
                 # --------------------------------------------------
-                # call PID controller function to change Q_red_heater[i]
+                # call PID controller function to change Q1[i]
                 # --------------------------------------------------
-                [Q_red_heater[i],P,ierr,D] = pid(SP1[i],T_red_reactor[i],T_red_reactor[max(0,i-1)],ierr,1.0)
+                [Q1[i],P,ierr,D] = pid(SP1[i],T1[i],T1[max(0,i-1)],ierr,1.0)
 
-                reactor.Q_red_heater(Q_red_heater[i])
+                lab.Q1(Q1[i])
                 if i%20==0:
                     print(' Heater,   Temp,  Setpoint')
-                print(f'{Q_red_heater[i]:7.2f},{T_red_reactor[i]:7.2f},{SP1[i]:7.2f}')
+                print(f'{Q1[i]:7.2f},{T1[i]:7.2f},{SP1[i]:7.2f}')
                 # wait for 1 sec
                 time.sleep(1)
-            reactor.close()
+            lab.close()
             # Save data file
-            data = np.vstack((tm,Q_red_heater,T_red_reactor,SP1)).T
+            data = np.vstack((tm,Q1,T1,SP1)).T
             np.savetxt('PID_control.csv',data,delimiter=',',\
-                    header='Time,Q_red_heater,T_red_reactor,SP1',comments='')
+                    header='Time,Q1,T1,SP1',comments='')
 
             # Create Figure
             plt.figure(figsize=(10,7))
             ax = plt.subplot(2,1,1)
             ax.grid()
             plt.plot(tm/60.0,SP1,'k-',label=r'$T_1$ SP')
-            plt.plot(tm/60.0,T_red_reactor,'r.',label=r'$T_1$ PV')
+            plt.plot(tm/60.0,T1,'r.',label=r'$T_1$ PV')
             plt.ylabel(r'Temp ($^oC$)')
             plt.legend(loc=2)
             ax = plt.subplot(2,1,2)
             ax.grid()
-            plt.plot(tm/60.0,Q_red_heater,'b-',label=r'$Q_1$')
+            plt.plot(tm/60.0,Q1,'b-',label=r'$Q_1$')
             plt.ylabel(r'Heater (%)')
             plt.xlabel('Time (min)')
             plt.legend(loc=1)
