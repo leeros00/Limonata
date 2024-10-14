@@ -87,10 +87,10 @@ class Reactor(object):
                   'at', self.baud_rate, 'baud.')
             print(self.version + '.')
         # TODO: implement labtime equivalent
-        self._P_red_heater = 250.0
-        self.Q_red_heater(0)
+        self._P = 250.0
+        self.Q(0)
         # TODO: set other defaults as needed
-        self.sources = [('T_red', self.scan), ('Q_red_heater', None),]
+        self.sources = [('T_red', self.scan), ('Q', None),]
 
     def __enter__(self) -> 'Reactor':
         """Enters the context manager."""
@@ -110,14 +110,14 @@ class Reactor(object):
 
         self.sp = serial.Serial(port=self.port, baudrate=baud_rate, timeout=2)
         time.sleep(2)
-        self.Q_red_heater(0) # Fails if not connected
+        self.Q(0) # Fails if not connected
         self.baud_rate = baud_rate
 
     def close(self) -> None:
         """Shut down the Limonata device and close serial connection."""
         global _connected
 
-        self.Q_red_heater(0)
+        self.Q(0)
         self.send_and_receive('X')
         self.sp.close()
         _connected = False
@@ -150,31 +150,31 @@ class Reactor(object):
         pass
 
     @property
-    def T_red_reactor(self) -> float:
+    def T(self) -> float:
         """Returns the interior temperature of the red reactor vessel."""
-        return self.send_and_receive(msg='T_red_reactor', convert=float)
+        return self.send_and_receive(msg='T', convert=float)
     
     @property
-    def P_red_heater(self) -> Callable:
-        return self._P_red_heater
+    def P(self) -> Callable:
+        return self._P
 
-    @P_red_heater.setter
-    def P_red_heater(self, val: int | float) -> None:
-        self._P_red_heater = self.send_and_receive(command('P_red_heater', val, 0, 255), float)
+    @P.setter
+    def P(self, val: int | float) -> None:
+        self._P = self.send_and_receive(command('P', val, 0, 255), float)
 
-    def Q_red_heater(self, val: Union[float, int]=None) -> float:
+    def Q(self, val: Union[float, int]=None) -> float:
         """Get or set Limonata red vessel temperature."""
         if val is None:
             msg = 'R_red_heater'
         else:
-            msg = 'Q_red_heater' + sep + str(clip(val=val))
+            msg = 'Q' + sep + str(clip(val=val))
         return self.send_and_receive(msg=msg, convert=float)
     
     def scan(self) -> Tuple[float]:
         """Scans for T and Q values"""
-        T_red_reactor = self.T_red_reactor
-        Q_red_heater = self.Q_red_heater
-        return T_red_reactor, Q_red_heater
+        T = self.T
+        Q = self.Q
+        return T, Q
 
-    U_red_heater = property(fget=Q_red_heater, fset=Q_red_heater, doc="Red Heater value")
+    U_red_heater = property(fget=Q, fset=Q, doc="Red Heater value")
     
