@@ -1,85 +1,6 @@
 
 ```
 Limonata
-├─ config
-├─ docs
-│  ├─ api_reference.md
-│  ├─ firmware_guide.md
-│  ├─ README.md
-│  └─ user_guide.md
-├─ firmware
-│  ├─ actuators
-│  ├─ communication.cpp
-│  ├─ firmware.ino
-│  ├─ sensors
-│  ├─ utilities.cpp
-│  └─ __init__.py
-├─ LICENSE
-├─ limonata
-│  ├─ control
-│  │  ├─ advanced
-│  │  │  ├─ adaptive.py
-│  │  │  ├─ lqr.py
-│  │  │  ├─ mpc.py
-│  │  │  ├─ robust.py
-│  │  │  ├─ smc.py
-│  │  │  └─ __init__.py
-│  │  ├─ machine_learning
-│  │  │  ├─ fuzzy_logic.py
-│  │  │  ├─ nn.py
-│  │  │  ├─ rl.py
-│  │  │  └─ __init__.py
-│  │  ├─ state_estimation
-│  │  │  ├─ extended_kalman_filter.py
-│  │  │  ├─ kalman_filter.py
-│  │  │  ├─ particle_filter.py
-│  │  │  └─ __init__.py
-│  │  ├─ supervisory
-│  │  │  ├─ rule_based.py
-│  │  │  ├─ scada.py
-│  │  │  ├─ scheduling.py
-│  │  │  └─ __init__.py
-│  │  └─ __init__.py
-│  ├─ reactor
-│  │  ├─ actuators
-│  │  │  ├─ agitator.py
-│  │  │  ├─ bldc_pump.py
-│  │  │  ├─ heat_element.py
-│  │  │  ├─ peristaltic_pump.py
-│  │  │  └─ __init__.py
-│  │  ├─ config_manager.py
-│  │  ├─ data_logging.py
-│  │  ├─ reactor.py
-│  │  ├─ sensors
-│  │  │  ├─ density_sensor.py
-│  │  │  ├─ flow_sensor.py
-│  │  │  ├─ level_sensor.py
-│  │  │  ├─ load_cell.py
-│  │  │  ├─ ph_sensor.py
-│  │  │  ├─ pressure_sensor.py
-│  │  │  └─ __init__.py
-│  │  ├─ sensor_data_processing.py
-│  │  ├─ serial_comm.py
-│  │  ├─ __init__.py
-│  │  └─ __pycache__
-│  │     ├─ reactor.cpython-311.pyc
-│  │     └─ __init__.cpython-311.pyc
-│  ├─ __init__.py
-│  └─ __pycache__
-│     └─ __init__.cpython-311.pyc
-├─ main.py
-├─ PID_control.csv
-├─ PID_Control.png
-├─ tests
-│  ├─ test_pid.py
-│  └─ __pycache__
-│     └─ test_pid.cpython-311.pyc
-└─ __pycache__
-   └─ test_pid.cpython-311.pyc
-
-```
-```
-Limonata
 ├─ .git
 │  ├─ COMMIT_EDITMSG
 │  ├─ config
@@ -129,6 +50,8 @@ Limonata
 │  │  │  └─ dcd974693b5bd53f264bb86cad65e28c12e396
 │  │  ├─ 11
 │  │  │  └─ 6034515c33ad10fad0103c652087b4891b73e7
+│  │  ├─ 29
+│  │  │  └─ ecf220fee7a61ba7924073481da22582b8c639
 │  │  ├─ 2a
 │  │  │  └─ 050fcc4159931c4b87117235f7a18edbac8cc8
 │  │  ├─ 2e
@@ -197,6 +120,8 @@ Limonata
 │  │  │  └─ b167764b489b29eccc5f6c42b6461431264ce6
 │  │  ├─ b4
 │  │  │  └─ 0bc41ec938a206cf129ccbceadd10496f49149
+│  │  ├─ bb
+│  │  │  └─ 128213bf307c43180841b557a7d52e15e8496d
 │  │  ├─ c2
 │  │  │  ├─ 2907a636bb961682d6f98e6864305e9155cf04
 │  │  │  └─ e40ed4ef62db918c2d1a6745766f098a479017
@@ -233,6 +158,8 @@ Limonata
 │  │  │  └─ 8cac487373ffc4a097c7005074cfb30fd79e02
 │  │  ├─ f2
 │  │  │  └─ f9d961fb2d421b9b19f0d79debb3c09d6797d5
+│  │  ├─ f4
+│  │  │  └─ cdf215fdd88ddf91f15328f610a6ee8b3f5819
 │  │  ├─ f9
 │  │  │  └─ 3cb977846d800b839676856e6c44ad6e687102
 │  │  ├─ fb
@@ -272,7 +199,14 @@ Limonata
 │  └─ __init__.py
 ├─ LICENSE
 ├─ limonata
-│  ├─ control
+│  ├─ actuators
+│  │  ├─ agitator.py
+│  │  ├─ bldc_pump.py
+│  │  ├─ heat_element.py
+│  │  ├─ peristaltic_pump.py
+│  │  └─ __init__.py
+│  ├─ config_manager.py
+│  ├─ control_algorithms
 │  │  ├─ advanced
 │  │  │  ├─ adaptive.py
 │  │  │  ├─ lqr.py
@@ -296,31 +230,22 @@ Limonata
 │  │  │  ├─ scheduling.py
 │  │  │  └─ __init__.py
 │  │  └─ __init__.py
-│  ├─ reactor
-│  │  ├─ actuators
-│  │  │  ├─ agitator.py
-│  │  │  ├─ bldc_pump.py
-│  │  │  ├─ heat_element.py
-│  │  │  ├─ peristaltic_pump.py
-│  │  │  └─ __init__.py
-│  │  ├─ config_manager.py
-│  │  ├─ data_logging.py
-│  │  ├─ reactor.py
-│  │  ├─ sensors
-│  │  │  ├─ density_sensor.py
-│  │  │  ├─ flow_sensor.py
-│  │  │  ├─ level_sensor.py
-│  │  │  ├─ load_cell.py
-│  │  │  ├─ ph_sensor.py
-│  │  │  ├─ pressure_sensor.py
-│  │  │  └─ __init__.py
-│  │  ├─ sensor_data_processing.py
-│  │  ├─ serial_comm.py
+│  ├─ data_logging.py
+│  ├─ reactor.py
+│  ├─ sensors
+│  │  ├─ density_sensor.py
+│  │  ├─ flow_sensor.py
+│  │  ├─ level_sensor.py
+│  │  ├─ load_cell.py
+│  │  ├─ ph_sensor.py
+│  │  ├─ pressure_sensor.py
 │  │  └─ __init__.py
+│  ├─ sensor_data_processing.py
+│  ├─ serial_comm.py
 │  └─ __init__.py
 ├─ main.py
 ├─ README.md
 └─ tests
-   └─ test_pid.py
+   └─ test_reactor.py
 
 ```
