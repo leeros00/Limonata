@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "limonata"
+version = "0.1.0"
+description = "A modular reactor and control system for prototyping chemical processes."
+authors = ["Ross Lee <ross_j_lee@outlook.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
