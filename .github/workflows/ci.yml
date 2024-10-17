@@ -14,7 +14,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [3.10, 3.11, 3.12]
+        python-version: [3.11, 3.12]
 
     steps:
     - name: Checkout code
@@ -48,3 +48,9 @@ jobs:
 
     - name: Check dependency updates
       run: poetry update
+
+    - name: Build Sphinx documentation
+      run: |
+        cd docs
+        poetry run sphinx-apidoc -o source/ ../limonata
+        poetry run make html
