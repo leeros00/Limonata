@@ -1,8 +1,6 @@
-import sys
-import os
-
 from limonata.reactor import Reactor
 import pytest as pt
+
 
 @pt.fixture
 def test_T() -> Reactor:
@@ -18,4 +16,8 @@ def test_reactor_initialization(reactor: Reactor) -> None:
 
 
 def test_start_reactor(reactor: Reactor) -> None:
-    
+    """Test if the reactor initializes with the correct values."""
+    assert reactor.port is not None
+    assert reactor.baud_rate in [11520, 9600]
+    assert reactor.version.startswith("VERSION")
+    assert reactor.sp.isOpen()

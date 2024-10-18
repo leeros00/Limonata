@@ -3,12 +3,23 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.so
 env/
 venv/
 ENV/
 build/
 dist/
 *.egg-info/
+
+env/
+venv/
+
+.mypy_cache/
+.ruff_cache/
+
+poetry.lock
+
+docs/_build/
 
 # IDEs
 .vscode/

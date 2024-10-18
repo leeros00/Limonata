@@ -35,7 +35,7 @@ jobs:
         poetry install
 
     - name: Run linting
-      run: poetry run ruff . --fix 
+      run: poetry run ruff check --fix 
 
     - name: Run type-checking
       run: poetry run mypy limonata
@@ -44,7 +44,7 @@ jobs:
       run: poetry run pytest tests/
 
     - name: Check code style
-      run: poetry run ruff . --select F --ignore E501 --show-source
+      run: poetry run ruff --select F --ignore E501 --show-source
 
     - name: Check dependency updates
       run: poetry update
