@@ -1,13 +1,13 @@
 from __future__ import print_function
 
 import time
-import serial
-from serial.tools import list_ports
+import serial # type: ignore
+from serial.tools import list_ports # type: ignore
 
 # from .labtime import labtime
 # from .version import __version__
 
-from typing import Union, Tuple, Any, Callable
+from typing import Any, Callable
 
 
 sep = " "
@@ -24,23 +24,23 @@ mcus = [
 
 
 def clip(
-    val: Union[float, int], lower: Union[float, int] = 0, upper: Union[float, int] = 100
-) -> Union[float, int]:
+    val: float | int, lower: float | int = 0, upper: float | int = 100
+) -> float | int:
     """Limit value to be between lower and upper limits."""
     return max(lower, min(val, upper))
 
 
 def command(
     name: str,
-    argument: str,
-    lower: Union[float, int] = 0,
-    upper: Union[float, int] = 100,
+    argument: float | int,
+    lower: float | int = 0,
+    upper: float | int = 100,
 ) -> str:
     """Locates the controller and returns the port and device."""
     return name + sep + str(clip(val=argument, lower=lower, upper=upper))
 
 
-def find_microcontroller(port: str = "") -> Union[Tuple, Tuple[None, None]]:
+def find_microcontroller(port: str = "") -> tuple | tuple[None, None]:
     """Locates the microcontroller and returns port and device."""
     # TODO: Figure out the type hinting for port, mcu
     comports = [tuple for tuple in list_ports.comports() if port in tuple[0]]
@@ -163,7 +163,7 @@ class Reactor(object):
             raise ValueError("No response received from controller.")
         return convert(response)
 
-    def alarm() -> None:
+    def alarm(self) -> None:
         pass
 
     @property
@@ -172,25 +172,25 @@ class Reactor(object):
         return self.send_and_receive(msg="T", convert=float)
 
     @property
-    def P(self) -> Callable:
+    def P(self) -> float:
         return self._P
 
     @P.setter
     def P(self, val: int | float) -> None:
         self._P = self.send_and_receive(command("P", val, 0, 255), float)
 
-    def Q(self, val: Union[float, int] = None) -> float:
+    def Q(self, val: float | int = 0) -> float:
         """Get or set Limonata red vessel temperature."""
         if val is None:
-            msg = "R_red_heater"
+            msg = "R"
         else:
             msg = "Q" + sep + str(clip(val=val))
         return self.send_and_receive(msg=msg, convert=float)
 
-    def scan(self) -> Tuple[float]:
+    def scan(self) -> tuple[float, Callable[[float | int], float]]:
         """Scans for T and Q values"""
         T = self.T
         Q = self.Q
         return T, Q
 
-    U_red_heater = property(fget=Q, fset=Q, doc="Red Heater value")
+    U = property(fget=Q, fset=lambda self, val: self.Q(val=val), doc="Red Heater value")
