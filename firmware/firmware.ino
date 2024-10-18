@@ -52,17 +52,17 @@ void readCommand() {
     int byte = Serial.read();
     if ((byte != '\r') && (byte != nl) && (buffer_index < 64)) {
       Buffer[buffer_index] = byte;
-      bufferIndex++;
+      buffer_index++;
     }
     else {
       newData = true;
     }
-  }
+  }   
 }
 
-
-echoCommand(){
-  if (newData){
+// for debugging with the serial monitor in Arduino IDE
+void echoCommand() {
+  if (newData) {
     Serial.write("Received Command: ");
     Serial.write(Buffer, buffer_index);
     Serial.write(nl);
@@ -166,13 +166,13 @@ void setup() {
   Serial.begin(baudRate);
   Serial.flush();
   setHeater(0);
-  ledTimeout = millis() + 1000;
+  //ledTimeout = millis() + 1000;
 }
 
 
 void loop() {
   readCommand();
-  if (DEBUG) echoCommand();
+  //if (DEBUG) echoCommand();
   parseCommand();
   dispatchCommand();
 }
