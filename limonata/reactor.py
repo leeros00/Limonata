@@ -105,7 +105,7 @@ class Reactor(object):
         self.Q(0)
         # TODO: set other defaults as needed
         self.sources = [
-            ("T_red", self.scan),
+            ("T", self.scan),
             ("Q", None),
         ]
 
