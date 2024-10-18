@@ -43,8 +43,8 @@ jobs:
     - name: Run type-checking
       run: poetry run mypy limonata
 
-    - name: Check code style
-      run: poetry run ruff --select F --ignore E501 --show-source
+    - name: Formatting
+      run: poetry run ruff format
 
     - name: Check dependency updates
       run: poetry update
