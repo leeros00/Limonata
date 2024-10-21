@@ -1,8 +1,8 @@
 from __future__ import print_function
 
 import time
-import serial # type: ignore
-from serial.tools import list_ports # type: ignore
+import serial  # type: ignore
+from serial.tools import list_ports  # type: ignore
 
 # from .labtime import labtime
 # from .version import __version__

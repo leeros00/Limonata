@@ -55,18 +55,4 @@ jobs:
         poetry run sphinx-apidoc -o source/ ../limonata
         poetry run make html
 
-    - name: Get Commit Author Email
-      id: get_author
-      run: |
-        COMMIT_EMAIL=$(git log -1 --pretty=format:'%ae')
-        echo "COMMIT_EMAIL=$COMMIT_EMAIL" >> $GITHUB_ENV
 
-    - name: Commit and Push changes
-      run: |
-        git config --local user.email "${{ env.COMMIT_EMAIL }}"
-        git config --local user.name "${{ github.actor }}"  # Use the actor (username) for the commit
-        git add .
-        git commit -m "Apply formatting and linting fixes" || echo "No changes to commit"
-        git push origin main
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
