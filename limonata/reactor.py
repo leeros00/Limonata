@@ -83,14 +83,14 @@ class Reactor:
             print(self.version + ".")
         timer.set_rate(1)
         timer.start()
-        self._P1: float = 200.0
-        self._P2: float = 100.0
-        self.Q2(0)
+        self._PP: float = 200.0
+        self._PH: float = 100.0
+        self.QH(0)
         self.sources: list[tuple[str, Callable | None]] = [
-            ("T1", self.scan),
-            ("T2", None),
-            ("Q1", None),
-            ("Q2", None),
+            ("F", self.scan),
+            ("T", None),
+            ("QP", None),
+            ("QH", None),
         ]
 
     def __enter__(self) -> "Reactor":
@@ -113,15 +113,15 @@ class Reactor:
         _connected = True
         self.sp = serial.Serial(port=self.port, baudrate=baud, timeout=2)
         time.sleep(2)
-        self.Q1(0)  # fails if not connected
+        self.QP(0)  # fails if not connected
         self.baud: int = baud
 
     def close(self) -> None:
         """Shut down Reactor device and close serial connection."""
         global _connected
 
-        self.Q1(0)
-        self.Q2(0)
+        self.QP(0)
+        self.QH(0)
         self.send_and_receive("X")
         self.sp.close()
         _connected = False
@@ -151,37 +151,37 @@ class Reactor:
         return self.send_and_receive(command("LED", val), float)
 
     @property
-    def T1(self) -> float:
-        """Return a float denoting Reactor temperature T1 in degrees C."""
-        return self.send_and_receive("T1", float)
+    def F(self) -> float:
+        """Return a float denoting Reactor effluent flow rate F in L/min."""
+        return self.send_and_receive("F", float)
 
     @property
-    def T2(self) -> float:
-        """Return a float denoting Reactor temperature T2 in degrees C."""
-        return self.send_and_receive("T2", float)
+    def T(self) -> float:
+        """Return a float denoting Reactor temperature T in degrees C."""
+        return self.send_and_receive("T", float)
 
     @property
-    def P1(self) -> float:
-        """Return a float denoting maximum power of heater 1 in pwm."""
-        return self._P1
+    def PP(self) -> float:
+        """Return a float denoting maximum power of Pump in pwm."""
+        return self._PP
 
-    @P1.setter
-    def P1(self, val: float) -> None:
-        """Set maximum power of heater 1 in pwm, range 0 to 255."""
-        self._P1 = self.send_and_receive(command("P1", val, 0, 255), float)
+    @PP.setter
+    def PP(self, val: float) -> None:
+        """Set maximum power of Pump in pwm, range 0 to 255."""
+        self._PP = self.send_and_receive(command("PP", val, 0, 255), float)
 
     @property
-    def P2(self) -> float:
-        """Return a float denoting maximum power of heater 2 in pwm."""
-        return self._P2
+    def PH(self) -> float:
+        """Return a float denoting maximum power of Heater in pwm."""
+        return self._PH
 
-    @P2.setter
-    def P2(self, val: float) -> None:
-        """Set maximum power of heater 2 in pwm, range 0 to 255."""
-        self._P2 = self.send_and_receive(command("P2", val, 0, 255), float)
+    @PH.setter
+    def PH(self, val: float) -> None:
+        """Set maximum power of Heater in pwm, range 0 to 255."""
+        self._PH = self.send_and_receive(command("PH", val, 0, 255), float)
 
-    def Q1(self, val: float | None = None) -> float:
-        """Get or set Reactor heater power Q1
+    def QP(self, val: float | None = None) -> float:
+        """Get or set Reactor heater power QP
 
         val: Value of heater power, range is limited to 0-100
 
@@ -189,11 +189,11 @@ class Reactor:
         if val is None:
             msg = "R1"
         else:
-            msg = "Q1" + sep + str(clip(val))
+            msg = "QP" + sep + str(clip(val))
         return self.send_and_receive(msg, float)
 
-    def Q2(self, val: float | None = None) -> float:
-        """Get or set Reactor heater power Q2
+    def QH(self, val: float | None = None) -> float:
+        """Get or set Reactor heater power QH
 
         val: Value of heater power, range is limited to 0-100
 
@@ -201,26 +201,26 @@ class Reactor:
         if val is None:
             msg = "R2"
         else:
-            msg = "Q2" + sep + str(clip(val))
+            msg = "QH" + sep + str(clip(val))
         return self.send_and_receive(msg, float)
 
     def scan(self) -> tuple[float, float, float, float]:
-        T1: float = self.T1
-        T2: float = self.T2
-        Q1: float = self.Q1()
-        Q2: float = self.Q2()
-        return T1, T2, Q1, Q2
+        F: float = self.F
+        T: float = self.T
+        QP: float = self.QP()
+        QH: float = self.QH()
+        return F, T, QP, QH
 
     U1 = property(
-        fget=lambda self: self.Q1(),
-        fset=lambda self, val: self.Q1(val),
-        doc="Heater 1 value",
+        fget=lambda self: self.QP(),
+        fset=lambda self, val: self.QP(val),
+        doc="Pump value",
     )
 
     U2 = property(
-        fget=lambda self: self.Q2(),
-        fset=lambda self, val: self.Q2(val),
-        doc="Heater 2 value",
+        fget=lambda self: self.QH(),
+        fset=lambda self, val: self.QH(val),
+        doc="Heater value",
     )
 
 
@@ -234,20 +234,20 @@ class ReactorModel:
         self.Ta: float = 21  # ambient temperature
         self.tstart: float = timer.time()  # start time
         self.tlast: float = self.tstart  # last update time
-        self._P1: float = 200.0  # max power heater 1
-        self._P2: float = 100.0  # max power heater 2
-        self._Q1: float = 0  # initial heater 1
-        self._Q2: float = 0  # initial heater 2
-        self._T1: float = self.Ta  # temperature thermistor 1
-        self._T2: float = self.Ta  # temperature thermistor 2
-        self._H1: float = self.Ta  # temperature heater 1
-        self._H2: float = self.Ta  # temperature heater 2
+        self._PP: float = 200.0  # max power Pump
+        self._PH: float = 100.0  # max power Heater
+        self._QP: float = 0  # initial Pump
+        self._QH: float = 0  # initial Heater
+        self._F: float = self.Ta  # temperature thermistor 1
+        self._T: float = self.Ta  # temperature thermistor 2
+        self._H1: float = self.Ta  # temperature Pump
+        self._H2: float = self.Ta  # temperature Heater
         self.maxstep: float = 0.2  # maximum time step for integration
         self.sources: list[tuple[str, Callable | None]] = [
-            ("T1", self.scan),
-            ("T2", None),
-            ("Q1", None),
-            ("Q2", None),
+            ("F", self.scan),
+            ("T", None),
+            ("QP", None),
+            ("QH", None),
         ]
 
     def __enter__(self) -> "ReactorModel":
@@ -260,8 +260,8 @@ class ReactorModel:
 
     def close(self) -> None:
         """Simulate shutting down Reactor device."""
-        self.Q1(0)
-        self.Q2(0)
+        self.QP(0)
+        self.QH(0)
         print("Reactor Model disconnected successfully.")
 
     def LED(self, val: float = 100) -> float:
@@ -272,82 +272,82 @@ class ReactorModel:
         return clip(val)
 
     @property
-    def T1(self) -> float:
-        """Return a float denoting Reactor temperature T1 in degrees C."""
+    def F(self) -> float:
+        """Return a float denoting Reactor temperature F in degrees C."""
         self.update()
-        return self.measurement(self._T1)
+        return self.measurement(self._F)
 
     @property
-    def T2(self) -> float:
-        """Return a float denoting Reactor temperature T2 in degrees C."""
+    def T(self) -> float:
+        """Return a float denoting Reactor temperature T in degrees C."""
         self.update()
-        return self.measurement(self._T2)
+        return self.measurement(self._T)
 
     @property
-    def P1(self) -> float:
-        """Return a float denoting maximum power of heater 1 in pwm."""
+    def PP(self) -> float:
+        """Return a float denoting maximum power of Pump in pwm."""
         self.update()
-        return self._P1
+        return self._PP
 
-    @P1.setter
-    def P1(self, val: float) -> None:
-        """Set maximum power of heater 1 in pwm, range 0 to 255."""
+    @PP.setter
+    def PP(self, val: float) -> None:
+        """Set maximum power of Pump in pwm, range 0 to 255."""
         self.update()
-        self._P1 = clip(val, 0, 255)
+        self._PP = clip(val, 0, 255)
 
     @property
-    def P2(self) -> float:
-        """Return a float denoting maximum power of heater 2 in pwm."""
+    def PH(self) -> float:
+        """Return a float denoting maximum power of Heater in pwm."""
         self.update()
-        return self._P2
+        return self._PH
 
-    @P2.setter
-    def P2(self, val: float) -> None:
-        """Set maximum power of heater 2 in pwm, range 0 to 255."""
+    @PH.setter
+    def PH(self, val: float) -> None:
+        """Set maximum power of Heater in pwm, range 0 to 255."""
         self.update()
-        self._P2 = clip(val, 0, 255)
+        self._PH = clip(val, 0, 255)
 
-    def Q1(self, val: float | None = None) -> float:
-        """Get or set ReactorModel heater power Q1
+    def QP(self, val: float | None = None) -> float:
+        """Get or set ReactorModel heater power QP
 
         val: Value of heater power, range is limited to 0-100
 
         return clipped value."""
         self.update()
         if val is not None:
-            self._Q1 = clip(val)
-        return self._Q1
+            self._QP = clip(val)
+        return self._QP
 
-    def Q2(self, val: float | None = None) -> float:
-        """Get or set ReactorModel heater power Q2
+    def QH(self, val: float | None = None) -> float:
+        """Get or set ReactorModel heater power QH
 
         val: Value of heater power, range is limited to 0-100
 
         return clipped value."""
         self.update()
         if val is not None:
-            self._Q2 = clip(val)
-        return self._Q2
+            self._QH = clip(val)
+        return self._QH
 
     def scan(self) -> tuple[float, float, float, float]:
         self.update()
         return (
-            self.measurement(self._T1),
-            self.measurement(self._T2),
-            self._Q1,
-            self._Q2,
+            self.measurement(self._F),
+            self.measurement(self._T),
+            self._QP,
+            self._QH,
         )
 
     U1 = property(
-        fget=lambda self: self.Q1(),
-        fset=lambda self, val: self.Q1(val),
-        doc="Heater 1 value",
+        fget=lambda self: self.QP(),
+        fset=lambda self, val: self.QP(val),
+        doc="Pump value",
     )
 
     U2 = property(
-        fget=lambda self: self.Q2(),
-        fset=lambda self, val: self.Q2(val),
-        doc="Heater 2 value",
+        fget=lambda self: self.QH(),
+        fset=lambda self, val: self.QH(val),
+        doc="Heater value",
     )
 
     def quantize(self, T: float) -> float:
@@ -372,16 +372,16 @@ class ReactorModel:
             dt: float = min(self.maxstep, self.tnow - teuler)
             DeltaTaH1: float = self.Ta - self._H1
             DeltaTaH2: float = self.Ta - self._H2
-            DeltaT12: float = self._H1 - self._H2
-            dH1: float = self._P1 * self._Q1 / 5720 + DeltaTaH1 / 20 - DeltaT12 / 100
-            dH2: float = self._P2 * self._Q2 / 5720 + DeltaTaH2 / 20 + DeltaT12 / 100
-            dT1: float = (self._H1 - self._T1) / 140
-            dT2: float = (self._H2 - self._T2) / 140
+            DeltaF2: float = self._H1 - self._H2
+            dH1: float = self._PP * self._QP / 5720 + DeltaTaH1 / 20 - DeltaF2 / 100
+            dH2: float = self._PH * self._QH / 5720 + DeltaTaH2 / 20 + DeltaF2 / 100
+            dF: float = (self._H1 - self._F) / 140
+            dT: float = (self._H2 - self._T) / 140
 
             self._H1 += dt * dH1
             self._H2 += dt * dH2
-            self._T1 += dt * dT1
-            self._T2 += dt * dT2
+            self._F += dt * dF
+            self._T += dt * dT
             teuler += dt
 
         self.tlast = self.tnow
@@ -417,7 +417,7 @@ def diagnose(port: str = "") -> None:
 
     with Reactor(port=port, debug=True) as reactor:
         print("Reading temperature")
-        print(reactor.T1)
+        print(reactor.F)
 
     heading("Testing Reactor functions")
 
@@ -428,20 +428,20 @@ def diagnose(port: str = "") -> None:
 
         print()
         print("Reading temperatures")
-        T1: float = reactor.T1
-        T2: float = reactor.T2
-        print("T1 = {} °C, T2 = {} °C".format(T1, T2))
+        F: float = reactor.F
+        T: float = reactor.T
+        print("F = {} °C, T = {} °C".format(F, T))
 
         print()
         print("Writing fractional value to heaters...")
         try:
-            Q1: float = reactor.Q1(0.5)
+            QP: float = reactor.QP(0.5)
         except Exception as e:
-            print(f"Error occurred while setting Q1: {e}")
-            Q1 = -1.0
-        print("We wrote Q1 = 0.5, and read back Q1 =", Q1)
+            print(f"Error occurred while setting QP: {e}")
+            QP = -1.0
+        print("We wrote QP = 0.5, and read back QP =", QP)
 
-        if Q1 != 0.5:
+        if QP != 0.5:
             print(
                 "Your Reactor firmware version ({}) doesn't support"
                 "fractional heater values.".format(reactor.version)
@@ -452,8 +452,8 @@ def diagnose(port: str = "") -> None:
             "We will now turn on the heaters, wait 30 seconds "
             "and see if the temperatures have gone up. "
         )
-        reactor.Q1(100)
-        reactor.Q2(100)
+        reactor.QP(100)
+        reactor.QH(100)
         countdown(30)
 
         print()
@@ -466,22 +466,22 @@ def diagnose(port: str = "") -> None:
                 print("The temperature went up less than expected.")
                 print("Check the heater power supply.")
 
-        T1_final: float = reactor.T1
-        T2_final: float = reactor.T2
+        F_final: float = reactor.F
+        T_final: float = reactor.T
 
-        tempcheck("T1", T1, T1_final)
-        tempcheck("T2", T2, T2_final)
+        tempcheck("F", F, F_final)
+        tempcheck("T", T, T_final)
 
         print()
         heading("Throughput check")
         print("This part checks how fast your unit is")
-        print("We will read T1 as fast as possible")
+        print("We will read F as fast as possible")
 
         start: float = time.time()
         n: int = 0
         while time.time() - start < 10:
             elapsed: float = time.time() - start + 0.0001  # avoid divide by zero
-            T1 = reactor.T1
+            F = reactor.F
             n += 1
             print(
                 "\rTime elapsed: {:3.2f} s."

@@ -29,15 +29,23 @@ const char sp = ' ';           // command separator
 const char nl = '\n';          // command terminator
 
 // pin numbers corresponding to signals on the TC Lab Shield
-const int pinT1   = 0;         // T1
-const int pinT2   = 2;         // T2
-const int pinQ1   = 3;         // Q1
-const int pinQ2   = 5;         // Q2
+const int pinF   = 0;         // F
+const int pinT   = 2;         // T
+const int pinQP   = 3;         // QP
+const int pinQH   = 5;         // QH
+// new pins
+const int pinQ3   = 4;
+const int pinQ4   = 6;
+const int pinQ5   = 7;
+const int pinQ6   = 8;
+const int pinQ7   = 10;
+const int pinQ8   = 11;
+
 const int pinLED1 = 9;         // LED1
 
 // temperature alarm limits
-const int limT1   = 50;       // T1 high alarm (°C)
-const int limT2   = 50;       // T2 high alarm (°C)
+const int limF   = 50;       // F high alarm (°C)
+const int limT   = 50;       // T high alarm (°C)
 
 // LED1 levels
 const int hiLED   =  60;       // hi LED
@@ -56,8 +64,16 @@ long ledTimeout = 0;           // when to return LED to normal operation
 float LED = 100;               // LED override brightness
 float P1 = 200;                // heater 1 power limit in units of pwm. Range 0 to 255
 float P2 = 100;                // heater 2 power limit in units in pwm, range 0 to 255
-float Q1 = 0;                  // last value written to heater 1 in units of percent
-float Q2 = 0;                  // last value written to heater 2 in units of percent
+float QP = 0;                  // last value written to heater 1 in units of percent
+float QH = 0;                  // last value written to heater 2 in units of percent
+
+// new Q values for new pins
+float Q3 = 0; 
+float Q4 = 0; 
+float Q5 = 0; 
+float Q6 = 0; 
+float Q7 = 0; 
+float Q8 = 0; 
 int alarmStatus;               // hi temperature alarm status
 boolean newData = false;       // boolean flag indicating new command
 int n =  10;                   // number of samples for each temperature measurement
@@ -150,45 +166,45 @@ void dispatchCommand(void) {
     P2 = max(0, min(255, val));
     sendResponse(String(P2));
   }
-  else if (cmd == "Q1") {
+  else if (cmd == "QP") {
     setHeater1(val);
-    sendFloatResponse(Q1);
+    sendFloatResponse(QP);
   }
-  else if (cmd == "Q1B") {
+  else if (cmd == "QPB") {
     setHeater1(val);
-    sendBinaryResponse(Q1);
+    sendBinaryResponse(QP);
   }
-  else if (cmd == "Q2") {
+  else if (cmd == "QH") {
     setHeater2(val);
-    sendFloatResponse(Q2);
+    sendFloatResponse(QH);
   }
-  else if (cmd == "Q2B") {
+  else if (cmd == "QHB") {
     setHeater1(val);
-    sendBinaryResponse(Q2);
+    sendBinaryResponse(QH);
   }
   else if (cmd == "R1") {
-    sendFloatResponse(Q1);
+    sendFloatResponse(QP);
   }
   else if (cmd == "R2") {
-    sendFloatResponse(Q2);
+    sendFloatResponse(QH);
   }
   else if (cmd == "SCAN") {
-    sendFloatResponse(readTemperature(pinT1));
-    sendFloatResponse(readTemperature(pinT2));
-    sendFloatResponse(Q1);
-    sendFloatResponse(Q2);
+    sendFloatResponse(readTemperature(pinF));
+    sendFloatResponse(readTemperature(pinT));
+    sendFloatResponse(QP);
+    sendFloatResponse(QH);
   }
-  else if (cmd == "T1") {
-    sendFloatResponse(readTemperature(pinT1));
+  else if (cmd == "F") {
+    sendFloatResponse(readTemperature(pinF));
   }
-  else if (cmd == "T1B") {
-    sendBinaryResponse(readTemperature(pinT1));
+  else if (cmd == "FB") {
+    sendBinaryResponse(readTemperature(pinF));
   }
-  else if (cmd == "T2") {
-    sendFloatResponse(readTemperature(pinT2));
+  else if (cmd == "T") {
+    sendFloatResponse(readTemperature(pinT));
   }
-  else if (cmd == "T2B") {
-    sendBinaryResponse(readTemperature(pinT2));
+  else if (cmd == "TB") {
+    sendBinaryResponse(readTemperature(pinT));
   }
   else if (cmd == "VER") {
     sendResponse("TCLab Firmware " + vers + " " + boardType);
@@ -208,7 +224,7 @@ void dispatchCommand(void) {
 }
 
 void checkAlarm(void) {
-  if ((readTemperature(pinT1) > limT1) or (readTemperature(pinT2) > limT2)) {
+  if ((readTemperature(pinF) > limF) or (readTemperature(pinT) > limT)) {
     alarmStatus = 1;
   }
   else {
@@ -219,7 +235,7 @@ void checkAlarm(void) {
 void updateStatus(void) {
   // determine led status
   ledStatus = 1;
-  if ((Q1 > 0) or (Q2 > 0)) {
+  if ((QP > 0) or (QH > 0)) {
     ledStatus = 2;
   }
   if (alarmStatus > 0) {
@@ -257,14 +273,14 @@ void updateStatus(void) {
 
 // set Heater 1
 void setHeater1(float qval) {
-  Q1 = max(0., min(qval, 100.));
-  analogWrite(pinQ1, (Q1*P1)/100);
+  QP = max(0., min(qval, 100.));
+  analogWrite(pinQP, (QP*P1)/100);
 }
 
 // set Heater 2
 void setHeater2(float qval) {
-  Q2 = max(0., min(qval, 100.));
-  analogWrite(pinQ2, (Q2*P2)/100);
+  QH = max(0., min(qval, 100.));
+  analogWrite(pinQH, (QH*P2)/100);
 }
 
 // arduino startup
