@@ -13,6 +13,7 @@ scipy = "^1.14.1"
 matplotlib = "^3.9.2"
 pyserial = "^3.5"
 requests = "^2.32.3"
+pandas = "^2.2.3"
 
 
 [tool.poetry.group.dev.dependencies]

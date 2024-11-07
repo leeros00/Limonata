@@ -28,7 +28,7 @@ const long baud = 115200;      // serial baud rate
 const char sp = ' ';           // command separator
 const char nl = '\n';          // command terminator
 
-// pin numbers corresponding to signals on the TC Lab Shield
+
 const int pinT1   = 0;         // T1
 const int pinT2   = 2;         // T2
 const int pinQ1   = 3;         // Q1
