@@ -1,10 +1,11 @@
-from limonata.utils import clip, sep
+from limonata.utils import clip, command, sep
 from typing import Any
 import serial
 
 class Actuator:
     def __init__(self, sp: serial.Serial, debug: bool = False) -> None:
         self._Q = 0
+        self._P = 0
         self.sp = sp
         self.debug = debug
 
@@ -29,6 +30,16 @@ class Actuator:
         """Send a string message and return the response."""
         self.send(msg=msg)
         return convert(self.receive())
+    
+    @property
+    def P(self) -> float:
+        """Returns a float denoting the maximum power of the actuator in PWM."""
+        return self._P
+    
+    @P.setter
+    def P(self, val: float) -> None:
+        """Set maximum power of the actuator in PWM, range 0 to 255."""
+        self._P = self.send_and_receive(msg=command(name="P", argument=val, lower=0, upper=255), convert=float)
 
     @property
     def Q(self) -> float:

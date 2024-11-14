@@ -2,48 +2,16 @@ from __future__ import print_function
 import time
 import random
 import serial  # type: ignore
-from serial.tools import list_ports  # type: ignore
+
 from limonata.timer import timer
 from limonata.version import __version__
-
+from limonata.utils import clip, command, find_arduino, sep
 from typing import Callable, Any
 
-sep: str = " "  # command/value separator in Reactor firmware
 
-arduinos: list[tuple[str, str]] = [
-    ("USB VID:PID=16D0:0613", "Arduino Uno"),
-    ("USB VID:PID=1A86:7523", "NHduino"),
-    ("USB VID:PID=2341:8036", "Arduino Leonardo"),
-    ("USB VID:PID=2A03", "Arduino.org device"),
-    ("USB VID:PID", "unknown device"),
-]
+
 
 _connected: bool = False
-
-
-def clip(val: float, lower: float = 0, upper: float = 100) -> float:
-    """Limit value to be between lower and upper limits"""
-    return max(lower, min(val, upper))
-
-
-def command(name: str, argument: float, lower: float = 0, upper: float = 100) -> str:
-    """Construct command to the firmware."""
-    return name + sep + str(clip(argument, lower, upper))
-
-
-def find_arduino(port: str = "") -> tuple[str | None, str | None]:
-    """Locates Arduino and returns port and device."""
-    comports: list[tuple[str, str, str]] = [
-        tuple for tuple in list_ports.comports() if port in tuple[0]
-    ]
-    for port, desc, hwid in comports:
-        for identifier, arduino in arduinos:
-            if hwid.startswith(identifier):
-                return port, arduino
-    print("--- Serial Ports ---")
-    for port, desc, hwid in list_ports.comports():
-        print(port, desc, hwid)
-    return None, None
 
 
 class AlreadyConnectedError(Exception):
@@ -77,34 +45,21 @@ class Reactor:
         self.sp.readline().decode("UTF-8")
         self.version: str = self.send_and_receive("VER")
         if self.sp.isOpen():
-            print(
-                self.arduino, "connected on port", self.port, "at", self.baud, "baud."
-            )
+            print(self.arduino, "connected on port", self.port, "at", self.baud, "baud.")
             print(self.version + ".")
         timer.set_rate(1)
         timer.start()
-        self._P1: float = 200.0
-        self._P2: float = 100.0
-        self.Q2(0)
-        self.sources: list[tuple[str, Callable | None]] = [
-            ("T1", self.scan),
-            ("T2", None),
-            ("Q1", None),
-            ("Q2", None),
-        ]
+        self.actuators = {}
+        self.sensors = {}
 
     def __enter__(self) -> "Reactor":
         return self
 
-    def __exit__(
-        self, exc_type: type | None, exc_value: Exception | None, traceback
-    ) -> None:
+    def __exit__(self, exc_type: type | None, exc_value: Exception | None, traceback) -> None:
         self.close()
 
     def connect(self, baud: int) -> None:
-        """Establish a connection to the Arduino
-
-        baud: baud rate"""
+        """Establish a connection to the Arduino"""
         global _connected
 
         if _connected:
@@ -113,115 +68,101 @@ class Reactor:
         _connected = True
         self.sp = serial.Serial(port=self.port, baudrate=baud, timeout=2)
         time.sleep(2)
-        self.Q1(0)  # fails if not connected
         self.baud: int = baud
 
     def close(self) -> None:
-        """Shut down Reactor device and close serial connection."""
+        """Shut down all actuators and close the serial connection."""
         global _connected
 
-        self.Q1(0)
-        self.Q2(0)
+        for name, actuator in self.actuators.items():
+            try:
+                actuator.Q = 0
+                print(f"Actuator '{name}' has been shut off.")
+            except AttributeError:
+                print(f"Actuator '{name}' does not have a 'Q' attribute and could not be shut off.")
+
         self.send_and_receive("X")
         self.sp.close()
         _connected = False
         print("Reactor disconnected successfully.")
 
+    def add_actuator(self, name: str, actuator):
+        """Register an actuator and store it in the actuators dictionary."""
+        self.actuators[name] = actuator
+        setattr(self, name, actuator)
+        print(f"Registered actuator: {name}")
+
+    def add_sensor(self, name: str, sensor):
+        """Register a sensor and store it in the sensors dictionary."""
+        self.sensors[name] = sensor
+        setattr(self, name, sensor)
+        print(f"Registered sensor: {name}")
+
+    def set_actuator_output(self, name: str, value: float):
+        """Set the Q value of a specific actuator by name."""
+        if name in self.actuators:
+            self.actuators[name].Q = value
+        else:
+            raise ValueError(f"Actuator '{name}' not found.")
+
+    def get_sensor_output(self, name: str) -> float:
+        """Get the output of a specific sensor by name."""
+        if name in self.sensors:
+            return self.sensors[name].output
+        else:
+            raise ValueError(f"Sensor '{name}' not found.")
+
+    @property
+    def all_actuator_outputs(self):
+        """Return a dictionary of all actuator Q values."""
+        return {name: actuator.Q for name, actuator in self.actuators.items()}
+
+    @property
+    def all_sensor_readings(self):
+        """Return a dictionary of all sensor outputs."""
+        return {name: sensor.output for name, sensor in self.sensors.items()}
+
+    def list_components(self):
+        """List all registered actuators and sensors."""
+        return {
+            "actuators": list(self.actuators.keys()),
+            "sensors": list(self.sensors.keys()),
+        }
+
     def send(self, msg: str) -> None:
-        """Send a string message to the Reactor firmware."""
+        """Send a message to the Reactor firmware."""
         self.sp.write((msg + "\r\n").encode())
         if self.debug:
-            print('Sent: "' + msg + '"')
+            print('Sent:', msg)
         self.sp.flush()
 
     def receive(self) -> str:
-        """Return a string message received from the Reactor firmware."""
-        msg: str = self.sp.readline().decode("UTF-8").replace("\r\n", "")
-        if self.debug:
-            print('Return: "' + msg + '"')
-        return msg
+        """Receive a message from the Reactor firmware."""
+        return self.sp.readline().decode("UTF-8").strip()
 
     def send_and_receive(self, msg: str, convert: type = str) -> Any:
-        """Send a string message and return the response"""
+        """Send a message and return the response."""
         self.send(msg)
         return convert(self.receive())
 
-    def LED(self, val: float = 100) -> float:
-        """Flash Reactor LED at a specified brightness for 10 seconds."""
-        return self.send_and_receive(command("LED", val), float)
+    # def scan(self) -> tuple[float, float, float, float]:
+    #     T1: float = self.T1
+    #     T2: float = self.T2
+    #     Q1: float = self.Q1()
+    #     Q2: float = self.Q2()
+    #     return T1, T2, Q1, Q2
 
-    @property
-    def T1(self) -> float:
-        """Return a float denoting Reactor temperature T1 in degrees C."""
-        return self.send_and_receive("T1", float)
+    # U1 = property(
+    #     fget=lambda self: self.Q1(),
+    #     fset=lambda self, val: self.Q1(val),
+    #     doc="Heater 1 value",
+    # )
 
-    @property
-    def T2(self) -> float:
-        """Return a float denoting Reactor temperature T2 in degrees C."""
-        return self.send_and_receive("T2", float)
-
-    @property
-    def P1(self) -> float:
-        """Return a float denoting maximum power of heater 1 in pwm."""
-        return self._P1
-
-    @P1.setter
-    def P1(self, val: float) -> None:
-        """Set maximum power of heater 1 in pwm, range 0 to 255."""
-        self._P1 = self.send_and_receive(command("P1", val, 0, 255), float)
-
-    @property
-    def P2(self) -> float:
-        """Return a float denoting maximum power of heater 2 in pwm."""
-        return self._P2
-
-    @P2.setter
-    def P2(self, val: float) -> None:
-        """Set maximum power of heater 2 in pwm, range 0 to 255."""
-        self._P2 = self.send_and_receive(command("P2", val, 0, 255), float)
-
-    def Q1(self, val: float | None = None) -> float:
-        """Get or set Reactor heater power Q1
-
-        val: Value of heater power, range is limited to 0-100
-
-        return clipped value."""
-        if val is None:
-            msg = "R1"
-        else:
-            msg = "Q1" + sep + str(clip(val))
-        return self.send_and_receive(msg, float)
-
-    def Q2(self, val: float | None = None) -> float:
-        """Get or set Reactor heater power Q2
-
-        val: Value of heater power, range is limited to 0-100
-
-        return clipped value."""
-        if val is None:
-            msg = "R2"
-        else:
-            msg = "Q2" + sep + str(clip(val))
-        return self.send_and_receive(msg, float)
-
-    def scan(self) -> tuple[float, float, float, float]:
-        T1: float = self.T1
-        T2: float = self.T2
-        Q1: float = self.Q1()
-        Q2: float = self.Q2()
-        return T1, T2, Q1, Q2
-
-    U1 = property(
-        fget=lambda self: self.Q1(),
-        fset=lambda self, val: self.Q1(val),
-        doc="Heater 1 value",
-    )
-
-    U2 = property(
-        fget=lambda self: self.Q2(),
-        fset=lambda self, val: self.Q2(val),
-        doc="Heater 2 value",
-    )
+    # U2 = property(
+    #     fget=lambda self: self.Q2(),
+    #     fset=lambda self, val: self.Q2(val),
+    #     doc="Heater 2 value",
+    # )
 
 
 class ReactorModel:
