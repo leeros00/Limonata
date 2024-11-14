@@ -29,16 +29,10 @@ Limonata is a flexible platform for anyone looking to prototype process control 
    python main.py
    ```
 
-## 📚 Learn More
-Explore the [User Guide](docs/user_guide.md) and [API Reference](docs/api_reference.md) for detailed tutorials and advanced features.
-
 ## 💡 Use Cases
 - **Food & Beverage:** Mix and control temperatures for brewing, fermentation, or flavor testing.
 - **Pharma & Biotech:** Prototype bioreactors and chemical synthesis processes.
 - **General Process Engineering:** Experiment with flow control, heating, and automated sampling.
-
-## 🤝 Contribute
-We welcome contributions from all backgrounds! Check out our [Contributing Guide](CONTRIBUTING.md) for more details on how you can help.
 
 ## 📜 License
 Limonata is released under the MIT License. See the [LICENSE](LICENSE) file for more details.
